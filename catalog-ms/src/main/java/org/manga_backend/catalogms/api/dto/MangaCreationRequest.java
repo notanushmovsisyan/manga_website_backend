@@ -1,4 +1,4 @@
-package org.manga_backend.catalogms.api;
+package org.manga_backend.catalogms.api.dto;
 
 public class MangaCreationRequest {
     private Long externalId;

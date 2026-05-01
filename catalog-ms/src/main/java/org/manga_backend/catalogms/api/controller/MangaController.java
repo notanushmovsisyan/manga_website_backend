@@ -1,9 +1,10 @@
 package org.manga_backend.catalogms.api.controller;
 
-import org.manga_backend.catalogms.api.MangaCreationRequest;
+import org.manga_backend.catalogms.api.dto.MangaCreationRequest;
 import org.manga_backend.catalogms.domain.model.Manga;
 import org.manga_backend.catalogms.domain.service.MangaImportService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +19,7 @@ public class MangaController {
         this.importService = importService;
     }
 
+    @PreAuthorize("hasRole('UPLOADER')")
     @PostMapping
     public ResponseEntity<?> createManga(@RequestBody MangaCreationRequest request) {
         if (request.getExternalId() != null && "MAL".equalsIgnoreCase(request.getSource())) {
