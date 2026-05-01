@@ -1,6 +1,7 @@
 package org.manga_backend.catalogms.domain.service;
 
 import jakarta.transaction.Transactional;
+import org.manga_backend.catalogms.api.exception.MangaNotFoundException;
 import org.manga_backend.catalogms.api.external.JikanMangaData;
 import org.manga_backend.catalogms.api.external.JikanResponse;
 import org.manga_backend.catalogms.domain.model.Manga;
@@ -41,7 +42,7 @@ public class MangaImportService {
                 .body(JikanResponse.class);
 
         if (response == null || response.getData() == null) {
-            throw new RuntimeException("Manga not found on MyAnimeList");
+            throw new MangaNotFoundException("Manga with MAL ID " + malId + " not found.");
         }
 
         JikanMangaData malData = response.getData();

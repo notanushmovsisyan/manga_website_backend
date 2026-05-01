@@ -10,7 +10,7 @@ public class RestClientConfig {
     @Bean
     public RestClient jikanRestClient() {
         return RestClient.builder()
-                .baseUrl("http://api.jikan.moe/v4")
+                .baseUrl("https://api.jikan.moe/v4")
                 .build();
     }
 }

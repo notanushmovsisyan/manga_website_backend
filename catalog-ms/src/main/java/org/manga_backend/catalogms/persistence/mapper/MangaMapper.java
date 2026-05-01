@@ -33,13 +33,19 @@ public class MangaMapper {
     }
 
     public static Manga mangaEntityToManga(MangaEntity entity) {
-        List<Author> authors = entity.getAuthors().stream()
-                .map(AuthorMapper::authorEntityToAuthor)
-                .toList();
+        List<Author> authors = new java.util.ArrayList<>();
+        if (entity.getAuthors() != null) {
+            authors = entity.getAuthors().stream()
+                    .map(AuthorMapper::authorEntityToAuthor)
+                    .toList();
+        }
 
-        List<Genre> genres = entity.getGenres().stream()
-                .map(GenreMapper::genreEntityToGenre)
-                .toList();
+        List<Genre> genres = new java.util.ArrayList<>();
+        if (entity.getGenres() != null) {
+            genres = entity.getGenres().stream()
+                    .map(GenreMapper::genreEntityToGenre)
+                    .toList();
+        }
 
         return new Manga(
                 entity.getId(),

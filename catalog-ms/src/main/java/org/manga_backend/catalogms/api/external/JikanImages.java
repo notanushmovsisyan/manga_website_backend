@@ -3,6 +3,8 @@ package org.manga_backend.catalogms.api.external;
 public class JikanImages {
     private JikanJpg jpg;
 
+    public JikanImages() {}
+
     public JikanImages(JikanJpg jpg) {
         this.jpg = jpg;
     }
