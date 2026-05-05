@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,14 +24,17 @@ public class ChapterService {
     private final ChapterRepository chapterRepository;
     private final PageRepository pageRepository;
     private final S3StorageServiceImpl storageService;
+    private final ChapterPublisherService publisherService;
 
     public ChapterService(ChapterRepository chapterRepository,
                           PageRepository pageRepository,
-                          S3StorageServiceImpl storageService) {
+                          S3StorageServiceImpl storageService,
+                          ChapterPublisherService publisherService) {
 
         this.chapterRepository = chapterRepository;
         this.pageRepository = pageRepository;
         this.storageService = storageService;
+        this.publisherService = publisherService;
     }
 
     @Transactional
@@ -58,6 +62,9 @@ public class ChapterService {
 
     @Transactional
     public void confirmUpload(Long chapterId, List<ChapterPage> chapterPages) {
+        ChapterEntity chapter = chapterRepository.findById(chapterId)
+                .orElseThrow(() -> new ChapterNotFoundException("Chapter not found"));
+
         List<ChapterPageEntity> entities = chapterPages.stream()
                 .map(p -> {
                     ChapterPageEntity entity = PageMapper.pageToPageEntity(p);
@@ -66,6 +73,13 @@ public class ChapterService {
                 }).collect(Collectors.toList());
 
         pageRepository.saveAll(entities);
+
+        publisherService.sendChapterPublished(
+                chapter.getMangaId(),
+                chapter.getId(),
+                chapter.getChapterNumber(),
+                Instant.now()
+        );
     }
 
     public Chapter getChapterById(Long id) {
@@ -84,7 +98,6 @@ public class ChapterService {
     public PagedResponse<ChapterPage> getPagesByChapterId(Long chapterId, Pageable pageable) {
         Page<ChapterPageEntity> entity = pageRepository.findByChapterId(chapterId, pageable);
         Page<ChapterPage> chapterPages = entity.map(PageMapper::pageEntityToPage);
-
         return new PagedResponse<>(chapterPages);
     }
 
