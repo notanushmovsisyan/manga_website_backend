@@ -30,6 +30,14 @@ public class TrackingRepository {
         return Optional.ofNullable(trackingTable.getItem(key));
     }
 
+    public void deleteByUserIdAndMangaId(Long userId, Long mangaId) {
+        Key key = Key.builder()
+                .partitionValue(userId)
+                .sortValue(mangaId)
+                .build();
+        trackingTable.deleteItem(key);
+    }
+
     public List<TrackingEntity> findBookmarksByUserId(Long userId) {
         QueryConditional queryConditional = QueryConditional.keyEqualTo(Key.builder()
                 .partitionValue(userId).

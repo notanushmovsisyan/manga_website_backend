@@ -58,6 +58,15 @@ public class TrackingController {
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
+    @DeleteMapping("/users/{userId}/bookmarks")
+    public ResponseEntity<Void> deleteBookmark(
+            @PathVariable Long userId,
+            @RequestBody BookmarkRequest request) {
+
+        trackingService.deleteBookmark(userId, request);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/users/{userId}/history")
     public ResponseEntity<PagedResponse<ReadingProgressDto>> getUserHistory(
             @PathVariable Long userId,

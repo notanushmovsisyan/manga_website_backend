@@ -10,16 +10,20 @@ import org.manga_backend.trackingms.persistence.TrackingPersistenceMapper;
 import org.manga_backend.trackingms.persistence.TrackingRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class TrackingService {
     private final TrackingRepository trackingRepository;
+    private final BookmarkEventProducer bookmarkEventProducer;
 
-    public TrackingService(TrackingRepository trackingRepository) {
+    public TrackingService(TrackingRepository trackingRepository, BookmarkEventProducer bookmarkEventProducer) {
         this.trackingRepository = trackingRepository;
+        this.bookmarkEventProducer = bookmarkEventProducer;
     }
 
     public PagedResponse<Bookmark> getBookmarksByUserId(Long userId, Pageable pageable) {
@@ -40,6 +44,7 @@ public class TrackingService {
         return new PagedResponse<>(page);
     }
 
+    @Transactional
     public void saveBookmark(Long userId, BookmarkRequest request) {
         TrackingEntity existing = trackingRepository
                 .findByUserIdAndMangaId(userId, request.mangaId())
@@ -48,6 +53,16 @@ public class TrackingService {
         Bookmark bookmark = new Bookmark(userId, request.mangaId(), LocalDateTime.now());
         TrackingEntity entity = TrackingPersistenceMapper.updateEntity(existing, bookmark, null);
         trackingRepository.save(entity);
+
+        bookmarkEventProducer.sendBookmarkAdded(userId, request.mangaId(), Instant.now());
+    }
+
+    @Transactional
+    public void deleteBookmark(Long userId, BookmarkRequest request) {
+        TrackingEntity entity = trackingRepository.findByUserIdAndMangaId(userId, request.mangaId())
+                .orElseThrow(() -> new RuntimeException("Bookmark not found"));
+
+        trackingRepository.deleteByUserIdAndMangaId(userId, request.mangaId());
     }
 
     public PagedResponse<ReadingProgress> getUserHistory(Long userId, Pageable pageable) {
