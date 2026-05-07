@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -73,7 +74,11 @@ public class S3StorageServiceImpl {
     public List<PresignedUrlResponse> generateUploadUrls(Long mangaId,
                                                          Long chapterId,
                                                          PresignedUrlRequest request) {
-        // ... (Your existing generateUploadUrls code remains the same)
+
+        if (request.getOriginalFileNames() == null) {
+            return Collections.emptyList();
+        }
+
         List<PresignedUrlResponse> responses = new ArrayList<>();
         List<String> fileNames = request.getOriginalFileNames();
 

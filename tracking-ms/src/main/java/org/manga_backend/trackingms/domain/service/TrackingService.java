@@ -44,7 +44,6 @@ public class TrackingService {
         return new PagedResponse<>(page);
     }
 
-    @Transactional
     public void saveBookmark(Long userId, BookmarkRequest request) {
         TrackingEntity existing = trackingRepository
                 .findByUserIdAndMangaId(userId, request.mangaId())
@@ -57,12 +56,12 @@ public class TrackingService {
         bookmarkEventProducer.sendBookmarkAdded(userId, request.mangaId(), Instant.now());
     }
 
-    @Transactional
     public void deleteBookmark(Long userId, BookmarkRequest request) {
         TrackingEntity entity = trackingRepository.findByUserIdAndMangaId(userId, request.mangaId())
                 .orElseThrow(() -> new RuntimeException("Bookmark not found"));
 
         trackingRepository.deleteByUserIdAndMangaId(userId, request.mangaId());
+        bookmarkEventProducer.sendBookmarkRemoved(userId, request.mangaId(), Instant.now());
     }
 
     public PagedResponse<ReadingProgress> getUserHistory(Long userId, Pageable pageable) {

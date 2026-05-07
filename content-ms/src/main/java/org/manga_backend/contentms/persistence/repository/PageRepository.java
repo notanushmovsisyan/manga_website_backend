@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PageRepository extends JpaRepository<ChapterPageEntity, Long> {
     Page<ChapterPageEntity> findByChapterId(Long chapterId, Pageable pageable);
     void deleteByChapterId(Long chapterId);
+    boolean existsByChapterId(Long chapterId);
 }

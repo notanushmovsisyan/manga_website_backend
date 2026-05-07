@@ -46,7 +46,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(authorizeRequest ->
                         authorizeRequest
                                 // 1. Whitelist Swagger documentation
-                                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                                .requestMatchers("/v1/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                                 // 2. Require a valid JWT token for EVERY other request
                                 .anyRequest().authenticated());

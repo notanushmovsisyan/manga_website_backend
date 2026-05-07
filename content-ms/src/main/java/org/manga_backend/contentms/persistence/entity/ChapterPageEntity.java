@@ -3,7 +3,15 @@ package org.manga_backend.contentms.persistence.entity;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name="pages")
+@Table(
+        name = "pages",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_chapter_page_number",
+                        columnNames = {"chapter_id", "page_number"}
+                )
+        }
+)
 public class ChapterPageEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

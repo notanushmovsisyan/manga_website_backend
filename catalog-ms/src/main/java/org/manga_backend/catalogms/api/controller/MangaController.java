@@ -25,7 +25,7 @@ public class MangaController {
         this.mangaService = mangaService;
     }
 
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasRole('ROLE_UPLOADER')")
     @PostMapping
     public ResponseEntity<?> createManga(@RequestBody MangaCreationRequest request) {
 
@@ -55,7 +55,7 @@ public class MangaController {
         return ResponseEntity.ok(response);
     }
 
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasRole('ROLE_UPLOADER')")
     @PutMapping("/{id}")
     public ResponseEntity<MangaResponse> updateMangaById(@PathVariable Long id,
                                                          @RequestBody MangaUpdateRequest request) {

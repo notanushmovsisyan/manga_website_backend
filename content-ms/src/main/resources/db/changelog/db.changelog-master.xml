@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.24.xsd">
+
+    <changeSet id="001-chapters" author="content-ms">
+        <sqlFile path="db/changelog/001-create-chapters.sql"/>
+    </changeSet>
+
+    <changeSet id="002-pages" author="content-ms">
+        <sqlFile path="db/changelog/002-create-pages.sql"/>
+    </changeSet>
+
+    <changeSet id="003-outbox-events" author="content-ms">
+        <sqlFile path="db/changelog/003-create-outbox-events.sql"/>
+    </changeSet>
+
+</databaseChangeLog>

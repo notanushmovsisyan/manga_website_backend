@@ -12,7 +12,6 @@ import java.util.Map;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-
     @ExceptionHandler(MangaNotFoundException.class)
     public ResponseEntity<?> handleMangaNotFoundException(MangaNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

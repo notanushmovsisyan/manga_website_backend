@@ -12,8 +12,11 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
+import software.amazon.awssdk.services.dynamodb.model.StreamSpecification;
+import software.amazon.awssdk.services.dynamodb.model.StreamViewType;
 
 import java.net.URI;
 
@@ -54,9 +57,18 @@ public class DynamoDbConfig {
                 System.out.println("Checking if DynamoDB table 'manga_tracking' exists...");
 
                 trackingTable.createTable(builder -> builder
-                        .provisionedThroughput(b -> b.readCapacityUnits(5L).writeCapacityUnits(5L))
+                        .provisionedThroughput(b -> b
+                                .readCapacityUnits(5L)
+                                .writeCapacityUnits(5L)
+                        )
+                        .streamSpecification(StreamSpecification.builder()
+                                .streamEnabled(true)
+                                .streamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                .build()
+                        )
                         .globalSecondaryIndices(gsi -> gsi
                                 .indexName("HistoryIndex")
+                                .projection(p -> p.projectionType(ProjectionType.ALL))
                                 .provisionedThroughput(ProvisionedThroughput.builder()
                                         .readCapacityUnits(5L)
                                         .writeCapacityUnits(5L)

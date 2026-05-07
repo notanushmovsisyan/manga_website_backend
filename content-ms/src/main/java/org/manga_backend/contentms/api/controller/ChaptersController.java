@@ -12,6 +12,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -35,11 +36,11 @@ public class ChaptersController {
         return ResponseEntity.ok(chapters);
     }
 
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasRole('ROLE_UPLOADER')")
     @PostMapping("/mangas/{mangaId}/chapters")
     public ResponseEntity<List<PresignedUrlResponse>> createChapterAndGetUploadUrls(
             @PathVariable Long mangaId,
-            @RequestBody PresignedUrlRequest request) {
+            @Valid @RequestBody PresignedUrlRequest request) {
 
         Chapter newChapter = new Chapter(mangaId,
                 request.getChapterNumber(),
@@ -51,7 +52,7 @@ public class ChaptersController {
         return ResponseEntity.ok(urls);
     }
 
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasRole('ROLE_UPLOADER')")
     @PostMapping("/chapters/{chapterId}/confirm")
     public ResponseEntity<Void> confirmUpload(@PathVariable Long chapterId,
                                               @RequestBody List<ChapterPage> chapterPages) {
@@ -73,10 +74,10 @@ public class ChaptersController {
         return ResponseEntity.ok(chapterService.getPagesByChapterId(chapterId, pageable));
     }
 
-    @PreAuthorize("hasRole('UPLOADER')")
+    @PreAuthorize("hasRole('ROLE_UPLOADER')")
     @DeleteMapping("/chapters/{chapterId}")
     public ResponseEntity<Void> deleteChapter(@PathVariable Long chapterId) {
         chapterService.deleteChapter(chapterId);
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
     }
 }

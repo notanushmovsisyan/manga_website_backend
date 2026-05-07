@@ -23,9 +23,11 @@ public class ChapterEntity {
     private String chapterTitle;
 
     @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     public ChapterEntity() {}

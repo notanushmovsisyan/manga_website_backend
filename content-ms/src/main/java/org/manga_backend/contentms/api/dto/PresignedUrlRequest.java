@@ -13,7 +13,7 @@ public class PresignedUrlRequest {
     @Positive
     private Double chapterNumber;
 
-    @NotEmpty
+    @NotNull(message = "originalFileNames cannot be null")
     private List<String> originalFileNames;
 
     public PresignedUrlRequest() {}

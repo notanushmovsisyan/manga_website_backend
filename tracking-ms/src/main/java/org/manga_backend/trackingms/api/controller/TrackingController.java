@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@PreAuthorize("#userId.toString() == authentication.name")
+@PreAuthorize("#username == authentication.name")
 public class TrackingController {
 
     private final TrackingService trackingService;

@@ -1,22 +1,31 @@
 package org.manga_backend.contentms.domain.service;
 
+import org.manga_backend.contentms.api.dto.ChapterPublishedEvent;
+import org.manga_backend.contentms.api.dto.OutboxPayload;
 import org.manga_backend.contentms.api.dto.PagedResponse;
 import org.manga_backend.contentms.api.exception.ChapterNotFoundException;
 import org.manga_backend.contentms.domain.model.Chapter;
 import org.manga_backend.contentms.domain.model.ChapterPage;
 import org.manga_backend.contentms.persistence.entity.ChapterEntity;
 import org.manga_backend.contentms.persistence.entity.ChapterPageEntity;
+import org.manga_backend.contentms.persistence.entity.OutboxEntity;
 import org.manga_backend.contentms.persistence.mapper.ChapterMapper;
 import org.manga_backend.contentms.persistence.mapper.PageMapper;
 import org.manga_backend.contentms.persistence.repository.ChapterRepository;
+import org.manga_backend.contentms.persistence.repository.OutboxRepository;
 import org.manga_backend.contentms.persistence.repository.PageRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,17 +33,22 @@ public class ChapterService {
     private final ChapterRepository chapterRepository;
     private final PageRepository pageRepository;
     private final S3StorageServiceImpl storageService;
-    private final ChapterPublisherService publisherService;
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
+
+    private static final Logger log = LoggerFactory.getLogger(ChapterService.class);
 
     public ChapterService(ChapterRepository chapterRepository,
                           PageRepository pageRepository,
                           S3StorageServiceImpl storageService,
-                          ChapterPublisherService publisherService) {
+                          OutboxRepository outboxRepository,
+                          ObjectMapper objectMapper) {
 
         this.chapterRepository = chapterRepository;
         this.pageRepository = pageRepository;
         this.storageService = storageService;
-        this.publisherService = publisherService;
+        this.outboxRepository = outboxRepository;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -57,29 +71,120 @@ public class ChapterService {
     public Chapter createChapter(Chapter chapter) {
         ChapterEntity entity = ChapterMapper.chapterToChapterEntity(chapter);
         ChapterEntity savedEntity = chapterRepository.save(entity);
+        log.info("CREATING CHAPTER {}", chapter.getChapterTitle());
         return ChapterMapper.chapterEntityToChapter(savedEntity);
     }
 
     @Transactional
     public void confirmUpload(Long chapterId, List<ChapterPage> chapterPages) {
+
+        if (pageRepository.existsByChapterId(chapterId)) {
+            throw new IllegalStateException(
+                    "Chapter upload already confirmed"
+            );
+        }
+
         ChapterEntity chapter = chapterRepository.findById(chapterId)
                 .orElseThrow(() -> new ChapterNotFoundException("Chapter not found"));
+
+        // =========================
+        // VALIDATION
+        // =========================
+
+        if (chapterPages == null || chapterPages.isEmpty()) {
+            throw new IllegalArgumentException("Chapter pages cannot be empty");
+        }
+
+        Set<Integer> seenPageNumbers = new HashSet<>();
+
+        List<Integer> sortedPageNumbers = chapterPages.stream()
+                .map(ChapterPage::getPageNumber)
+                .sorted()
+                .toList();
+
+        for (ChapterPage page : chapterPages) {
+
+            if (page.getPageNumber() == null || page.getPageNumber() <= 0) {
+                throw new IllegalArgumentException("Invalid page number");
+            }
+
+            if (page.getS3Url() == null || page.getS3Url().isBlank()) {
+                throw new IllegalArgumentException("S3 URL cannot be empty");
+            }
+
+            // duplicate page numbers
+            if (!seenPageNumbers.add(page.getPageNumber())) {
+                throw new IllegalArgumentException(
+                        "Duplicate page number: " + page.getPageNumber()
+                );
+            }
+        }
+
+        // check sequential ordering (1,2,3,4...)
+        for (int i = 0; i < sortedPageNumbers.size(); i++) {
+
+            int expected = i + 1;
+            int actual = sortedPageNumbers.get(i);
+
+            if (actual != expected) {
+                throw new IllegalArgumentException(
+                        "Missing or invalid page ordering at page " + expected
+                );
+            }
+        }
+
+        // =========================
+        // SAVE PAGES
+        // =========================
 
         List<ChapterPageEntity> entities = chapterPages.stream()
                 .map(p -> {
                     ChapterPageEntity entity = PageMapper.pageToPageEntity(p);
                     entity.setChapterId(chapterId);
                     return entity;
-                }).collect(Collectors.toList());
+                })
+                .toList();
 
         pageRepository.saveAll(entities);
 
-        publisherService.sendChapterPublished(
+        // =========================
+        // CREATE OUTBOX EVENT
+        // =========================
+
+        ChapterPublishedEvent event = new ChapterPublishedEvent(
                 chapter.getMangaId(),
                 chapter.getId(),
                 chapter.getChapterNumber(),
                 Instant.now()
         );
+
+        try {
+
+            OutboxPayload outboxPayload = new OutboxPayload(
+                    java.util.UUID.randomUUID(),
+                    "CHAPTER_PUBLISHED",
+                    "CHAPTER",
+                    chapter.getId(),
+                    Instant.now(),
+                    event
+            );
+
+            String payload = objectMapper.writeValueAsString(outboxPayload);
+
+            OutboxEntity outbox = new OutboxEntity(
+                    "CHAPTER",
+                    chapter.getId(),
+                    "CHAPTER_PUBLISHED",
+                    payload
+            );
+
+            outboxRepository.save(outbox);
+            log.info("OUTBOX SAVED {}", outbox.getEventType());
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(e);
+        }
     }
 
     public Chapter getChapterById(Long id) {
@@ -107,7 +212,13 @@ public class ChapterService {
                 .orElseThrow(() -> new ChapterNotFoundException("Chapter not found"));
 
         String s3FolderPath = String.format("mangas/%d/chapters/%d/", entity.getMangaId(), entity.getId());
-        storageService.deleteFolder(s3FolderPath);
+
+        try {
+            storageService.deleteFolder(s3FolderPath);
+        } catch (Exception e) {
+            log.error("Failed to delete S3 folder for chapterId={} path={}", id, s3FolderPath, e);
+        }
+
         pageRepository.deleteByChapterId(id);
         chapterRepository.delete(entity);
     }
