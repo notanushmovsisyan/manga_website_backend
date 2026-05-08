@@ -1,15 +1,21 @@
 package org.manga_backend.notifms.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.apache.kafka.common.TopicPartition;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -26,6 +32,29 @@ public class KafkaConsumerConfig {
 
     @Value("${spring.kafka.consumer.auto-offset-reset}")
     private String autoOffsetReset;
+
+    private final KafkaTemplate<String, String> kafkaTemplate;
+
+    public KafkaConsumerConfig(KafkaTemplate<String, String> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    // FOR INTERNAL ERROR ROUTING
+    @Bean
+    public ProducerFactory<String, String> producerFactory() {
+        Map<String, Object> config = new HashMap<>();
+
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+
+        return new DefaultKafkaProducerFactory<>(config);
+    }
+
+    @Bean
+    public KafkaTemplate<String, String> kafkaTemplate() {
+        return new KafkaTemplate<>(producerFactory());
+    }
 
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
@@ -46,11 +75,25 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+
         factory.setConsumerFactory(consumerFactory());
 
-        // Set AckMode to MANUAL so the consumer must explicitly call acknowledgment.acknowledge()
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+
+        factory.setCommonErrorHandler(
+                new DefaultErrorHandler(
+                        new DeadLetterPublishingRecoverer(kafkaTemplate,
+                                (record, ex) -> {
+                                    record.headers().add("error", ex.getMessage().getBytes());
+                                    return new TopicPartition("manga-updates-dlq", 0);
+                                }
+                        ),
+                        new FixedBackOff(1000L, 3)
+                )
+        );
 
         return factory;
     }

@@ -8,9 +8,10 @@ import org.manga_backend.trackingms.domain.model.ReadingProgress;
 import org.manga_backend.trackingms.persistence.TrackingEntity;
 import org.manga_backend.trackingms.persistence.TrackingPersistenceMapper;
 import org.manga_backend.trackingms.persistence.TrackingRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -20,6 +21,8 @@ import java.util.List;
 public class TrackingService {
     private final TrackingRepository trackingRepository;
     private final BookmarkEventProducer bookmarkEventProducer;
+
+    private static final Logger log = LoggerFactory.getLogger(TrackingService.class);
 
     public TrackingService(TrackingRepository trackingRepository, BookmarkEventProducer bookmarkEventProducer) {
         this.trackingRepository = trackingRepository;
@@ -41,6 +44,8 @@ public class TrackingService {
                 content, pageable, entities.size()
         );
 
+        log.debug("Bookmarks fetched userId={} total={}", userId, content.size());
+
         return new PagedResponse<>(page);
     }
 
@@ -52,7 +57,6 @@ public class TrackingService {
         Bookmark bookmark = new Bookmark(userId, request.mangaId(), LocalDateTime.now());
         TrackingEntity entity = TrackingPersistenceMapper.updateEntity(existing, bookmark, null);
         trackingRepository.save(entity);
-
         bookmarkEventProducer.sendBookmarkAdded(userId, request.mangaId(), Instant.now());
     }
 
@@ -88,6 +92,7 @@ public class TrackingService {
                 .findByUserIdAndMangaId(userId, dto.getMangaId())
                 .orElse(null);
 
+
         // 2. Create a domain model from the DTO
         ReadingProgress progress = new ReadingProgress(
                 userId,
@@ -103,5 +108,7 @@ public class TrackingService {
 
         // 4. Save the merged entity back to DynamoDB
         trackingRepository.save(entity);
+        log.info("Reading progress updated userId={} mangaId={} chapterId={}",
+                userId, dto.getMangaId(), dto.getLastReadChapterId());
     }
 }

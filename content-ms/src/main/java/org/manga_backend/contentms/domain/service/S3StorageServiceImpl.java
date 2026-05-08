@@ -2,6 +2,8 @@ package org.manga_backend.contentms.domain.service;
 
 import org.manga_backend.contentms.api.dto.PresignedUrlRequest;
 import org.manga_backend.contentms.api.dto.PresignedUrlResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -23,6 +25,8 @@ public class S3StorageServiceImpl {
     @Value("${aws.s3.bucket-name}")
     private String bucketName;
 
+    private static final Logger log = LoggerFactory.getLogger(S3StorageServiceImpl.class);
+
     public S3StorageServiceImpl(S3Presigner s3Presigner, S3Client s3Client) {
         this.s3Presigner = s3Presigner;
         this.s3Client = s3Client;
@@ -43,6 +47,7 @@ public class S3StorageServiceImpl {
                 ListObjectsV2Response listResponse = s3Client.listObjectsV2(listRequest);
 
                 if (listResponse.contents().isEmpty()) {
+                    log.debug("No S3 objects found for prefix={}", prefix);
                     break;
                 }
 
@@ -64,10 +69,11 @@ public class S3StorageServiceImpl {
 
             } while (continuationToken != null);
 
+            log.info("S3 folder deletion completed prefix={}", prefix);
+
         } catch (S3Exception e) {
-            // Log the error - you don't want a failed S3 cleanup to
             // necessarily crash your whole DB transaction unless required
-            System.err.println("Error deleting S3 folder: " + e.awsErrorDetails().errorMessage());
+            log.error("S3 folder deletion failed prefix={} bucket={}", prefix, bucketName, e);
         }
     }
 
@@ -76,6 +82,7 @@ public class S3StorageServiceImpl {
                                                          PresignedUrlRequest request) {
 
         if (request.getOriginalFileNames() == null) {
+            log.warn("No file names provided for presigned URL generation");
             return Collections.emptyList();
         }
 
@@ -108,6 +115,12 @@ public class S3StorageServiceImpl {
             String uploadUrl = s3Presigner.presignPutObject(presignRequest).url().toString();
             responses.add(new PresignedUrlResponse(name, s3Key, uploadUrl));
         }
+
+        log.info("Presigned URL generation completed mangaId={} chapterId={} count={}",
+                mangaId,
+                chapterId,
+                responses.size()
+        );
         return responses;
     }
 }

@@ -46,6 +46,12 @@ public class NotificationConsumer {
 
         try {
             Set<String> subscribers = cacheService.getSubscribers(event.mangaId());
+
+            if (subscribers.isEmpty()) {
+                log.warn("No subscribers found for mangaId={}, skipping fanout", event.mangaId());
+                return;
+            }
+
             inboxService.createNotificationsForSubscribers(subscribers, event);
             // Acknowledge ONLY after successful processing
             acknowledgment.acknowledge();

@@ -9,7 +9,7 @@ import java.time.Instant;
 @DynamoDbBean
 public class NotificationEntity {
     private Long userId;
-    private String notificationId;
+    private String idempotencyKey;
     private String type;
     private Long mangaId;
     private String message;
@@ -22,8 +22,11 @@ public class NotificationEntity {
     public void setUserId(Long userId) { this.userId = userId; }
 
     @DynamoDbSortKey
-    public String getNotificationId() { return notificationId; }
-    public void setNotificationId(String notificationId) { this.notificationId = notificationId; }
+    public String getIdempotencyKey() {return idempotencyKey;}
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }

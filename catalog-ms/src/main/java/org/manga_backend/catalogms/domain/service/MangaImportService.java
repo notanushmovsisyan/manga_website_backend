@@ -13,6 +13,8 @@ import org.manga_backend.catalogms.persistence.mapper.MangaMapper;
 import org.manga_backend.catalogms.persistence.repository.AuthorRepository;
 import org.manga_backend.catalogms.persistence.repository.GenreRepository;
 import org.manga_backend.catalogms.persistence.repository.MangaRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -22,6 +24,8 @@ public class MangaImportService {
     private final AuthorRepository authorRepository;
     private final GenreRepository genreRepository;
     private final MangaRepository mangaRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(MangaImportService.class);
 
     public MangaImportService(RestClient jikanClient,
                               AuthorRepository authorRepository,
@@ -42,6 +46,7 @@ public class MangaImportService {
                 .body(JikanResponse.class);
 
         if (response == null || response.getData() == null) {
+            log.warn("MAL import failed: no data returned id={}", malId);
             throw new MangaNotFoundException("Manga with MAL ID " + malId + " not found.");
         }
 
@@ -72,6 +77,7 @@ public class MangaImportService {
         }
 
         MangaEntity mangaEntity = mangaRepository.save(manga);
+        log.info("Manga imported successfully id={} title={}", mangaEntity.getId(), mangaEntity.getMangaTitle());
         return MangaMapper.mangaEntityToManga(mangaEntity);
     }
 

@@ -32,16 +32,22 @@ public class OutboxPublisherService {
 
     @Scheduled(fixedDelay = 5000)
     public void publishEvents() {
+        int successCount = 0;
+        int failureCount = 0;
 
         List<OutboxEntity> events = outboxRepository.findTop100ByPublishedFalseOrderByCreatedAtAsc();
 
         for (OutboxEntity event : events) {
             try {
                 publishSingleEvent(event);
+                successCount++;
             } catch (Exception e) {
-                log.error("Failed to publish event id={} error={}", event.getId(), e.getMessage());
+                log.error("Failed to publish event id={}", event.getId(), e);
+                failureCount++;
             }
         }
+
+        log.info("Outbox publishing completed success={} failed={}", successCount, failureCount);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -53,8 +59,10 @@ public class OutboxPublisherService {
                 event.getPayload()
         ).get();
 
+        log.debug("Kafka publish successful eventId={} topic={}", event.getId(), TOPIC);
         event.setPublished(true);
 
         outboxRepository.save(event);
+        log.info("Outbox event marked as published id={}", event.getId());
     }
 }

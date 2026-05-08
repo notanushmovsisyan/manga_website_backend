@@ -1,5 +1,7 @@
 package org.manga_backend.trackingms.persistence;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
@@ -14,12 +16,22 @@ import java.util.stream.Collectors;
 public class TrackingRepository {
     private final DynamoDbTable<TrackingEntity> trackingTable;
 
+    private static final Logger log = LoggerFactory.getLogger(TrackingRepository.class);
+
     public TrackingRepository(DynamoDbTable<TrackingEntity> trackingTable) {
         this.trackingTable = trackingTable;
     }
 
     public void save(TrackingEntity entity) {
-        trackingTable.putItem(entity);
+        try {
+            trackingTable.putItem(entity);
+        } catch (Exception e) {
+            log.error("Failed to save tracking entity userId={} mangaId={}",
+                    entity.getUserId(),
+                    entity.getMangaId(),
+                    e);
+            throw e;
+        }
     }
 
     public Optional<TrackingEntity> findByUserIdAndMangaId(Long userId, Long mangaId) {

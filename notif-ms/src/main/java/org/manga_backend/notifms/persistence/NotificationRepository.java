@@ -1,11 +1,10 @@
 package org.manga_backend.notifms.persistence;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
-import software.amazon.awssdk.enhanced.dynamodb.Key;
-import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.*;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
@@ -16,8 +15,9 @@ import java.util.Map;
 
 @Repository
 public class NotificationRepository {
-
     private final DynamoDbTable<NotificationEntity> table;
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationRepository.class);
 
     public NotificationRepository(
             DynamoDbEnhancedClient enhancedClient,
@@ -26,7 +26,13 @@ public class NotificationRepository {
     }
 
     public void save(NotificationEntity notification) {
-        table.putItem(notification);
+        try {
+            table.putItem(notification);
+        } catch (Exception e) {
+            log.warn("Duplicate notification ignored userId={} key={}",
+                    notification.getUserId(),
+                    notification.getIdempotencyKey());
+        }
     }
 
     public Page<NotificationEntity> findPaginatedByUserId(Long userId, int limit, String lastNotificationId) {

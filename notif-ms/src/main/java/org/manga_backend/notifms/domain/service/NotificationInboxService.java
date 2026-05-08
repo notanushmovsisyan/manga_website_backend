@@ -23,9 +23,10 @@ public class NotificationInboxService {
         String message = String.format("Chapter %d is now available!", event.chapterNumber());
 
         for (String userIdStr : userIds) {
+            String idempotencyKey = event.chapterId() + ":" + event.mangaId() + ":" + userIdStr;
             NotificationEntity notification = new NotificationEntity();
             notification.setUserId(Long.parseLong(userIdStr));
-            notification.setNotificationId(UUID.randomUUID().toString());
+            notification.setIdempotencyKey(idempotencyKey);
             notification.setType("CHAPTER_PUBLISHED");
             notification.setMangaId(event.mangaId());
             notification.setMessage(message);

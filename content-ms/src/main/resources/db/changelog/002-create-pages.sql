@@ -18,3 +18,6 @@ CREATE TABLE pages (
 
 CREATE INDEX idx_pages_chapter_id
     ON pages(chapter_id);
+
+CREATE INDEX idx_pages_chapter_id
+    ON pages(chapter_id);
